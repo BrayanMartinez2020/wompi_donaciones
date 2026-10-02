@@ -1,0 +1,4 @@
+administer wompi donaciones:
+  title: 'Administrar configuración de Wompi Donaciones'
+  description: 'Permite configurar las llaves y secretos de la pasarela de pagos Wompi (ambiente, llaves públicas/privadas, secretos de integridad y de eventos).'
+  restrict access: true

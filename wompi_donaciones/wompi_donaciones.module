@@ -1,0 +1,105 @@
+<?php
+
+use Drupal\Core\Render\BubbleableMetadata;
+use Drupal\webform\WebformSubmissionInterface;
+
+/**
+ * @file
+ * Hooks generales del módulo Wompi Donaciones.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function wompi_donaciones_help($route_name) {
+  if ($route_name === 'wompi_donaciones.settings') {
+    return '<p>' . t('Configura aquí las llaves de Wompi (Web Checkout). Mientras estos campos estén vacíos, el formulario "Causas" mostrará un mensaje de error en vez de redirigir a Wompi, así que el sitio nunca queda enviando pagos a un checkout mal configurado.') . '</p>';
+  }
+}
+
+/**
+ * Implements hook_requirements().
+ *
+ * Muestra en /admin/reports/status si las llaves de Wompi ya están
+ * configuradas, para que sea fácil verificar el estado sin tener que
+ * abrir el formulario de configuración.
+ */
+function wompi_donaciones_requirements($phase) {
+  $requirements = [];
+
+  if ($phase === 'runtime') {
+    $state = \Drupal::state();
+    $configurado = $state->get('wompi_donaciones.public_key') && $state->get('wompi_donaciones.integrity_secret') && $state->get('wompi_donaciones.events_secret');
+
+    $requirements['wompi_donaciones'] = [
+      'title' => t('Wompi Donaciones'),
+      'value' => $configurado ? t('Llaves configuradas (@env)', ['@env' => $state->get('wompi_donaciones.environment', 'sandbox')]) : t('Faltan llaves por configurar'),
+      'severity' => $configurado ? REQUIREMENT_OK : REQUIREMENT_WARNING,
+      'description' => t('Configura las llaves en <a href=":url">Configuración de Wompi - Donaciones</a>.', [':url' => '/admin/config/services/wompi-donaciones']),
+    ];
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_token_info().
+ *
+ * Estos dos tokens son los que usa el mensaje de confirmación del webform
+ * Causas ("Detalles de la donación") en su botón "Continuar", para
+ * enlazar al Web Checkout de Wompi sin que ese mensaje tenga que calcular
+ * nada por su cuenta (la referencia, el monto y la firma ya quedaron
+ * calculados y guardados por el handler en postSave()).
+ */
+function wompi_donaciones_token_info() {
+  $info = [];
+
+  $info['tokens']['webform_submission']['wompi-checkout-url'] = [
+    'name' => t('Wompi: URL de Web Checkout'),
+    'description' => t('URL de redirección al Web Checkout de Wompi para este envío, con la referencia y la firma de integridad ya calculadas. Si las llaves de Wompi no están configuradas, o el envío no tiene un intento de pago registrado, este token queda vacío (usar junto con [webform_submission:wompi-error]).'),
+  ];
+  $info['tokens']['webform_submission']['wompi-error'] = [
+    'name' => t('Wompi: mensaje de error'),
+    'description' => t('Mensaje para el donante si el pago con Wompi no se pudo preparar (por ejemplo, llaves no configuradas). Queda vacío cuando todo está en orden.'),
+  ];
+
+  return $info;
+}
+
+/**
+ * Implements hook_tokens().
+ */
+function wompi_donaciones_tokens($type, $tokens, array $data, array $options, BubbleableMetadata $bubbleable_metadata) {
+  $replacements = [];
+
+  if ($type !== 'webform_submission' || empty($data['webform_submission'])) {
+    return $replacements;
+  }
+
+  $necesita_wompi = array_intersect(array_keys($tokens), ['wompi-checkout-url', 'wompi-error']);
+  if (!$necesita_wompi) {
+    return $replacements;
+  }
+
+  /** @var \Drupal\webform\WebformSubmissionInterface $webform_submission */
+  $webform_submission = $data['webform_submission'];
+  if (!$webform_submission instanceof WebformSubmissionInterface) {
+    return $replacements;
+  }
+
+  $resultado = \Drupal::service('wompi_donaciones.checkout_url_builder')->build($webform_submission);
+
+  if (isset($tokens['wompi-checkout-url'])) {
+    $replacements[$tokens['wompi-checkout-url']] = $resultado['url'] ?? '';
+  }
+  if (isset($tokens['wompi-error'])) {
+    $replacements[$tokens['wompi-error']] = $resultado['error'] ?? '';
+  }
+
+  // Este valor depende del envío puntual que se está confirmando: no se
+  // debe cachear a nivel de página/render.
+  $bubbleable_metadata->addCacheContexts(['url']);
+  $bubbleable_metadata->setCacheMaxAge(0);
+
+  return $replacements;
+}

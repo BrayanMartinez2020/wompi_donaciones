@@ -1,0 +1,5 @@
+services:
+  wompi_donaciones.checkout_url_builder:
+    class: Drupal\wompi_donaciones\WompiCheckoutUrlBuilder
+  wompi_donaciones.transaction_status_resolver:
+    class: Drupal\wompi_donaciones\WompiTransactionStatusResolver

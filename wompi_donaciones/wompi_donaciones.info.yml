@@ -1,0 +1,7 @@
+name: 'Wompi Donaciones'
+type: module
+description: 'Integra el formulario de donaciones "Causas" con la pasarela de pagos Wompi (Web Checkout): genera la referencia y firma de integridad, redirige al donante y procesa la confirmación vía webhook, sin afectar el envío existente hacia Zapier.'
+package: Custom
+core_version_requirement: ^8.8 || ^9 || ^10
+dependencies:
+  - webform:webform

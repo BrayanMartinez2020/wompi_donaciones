@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file
+ * Install, update and schema hooks for Wompi Donaciones.
+ */
+
+/**
+ * Implements hook_schema().
+ *
+ * Tabla propia para llevar el estado de cada intento de pago con Wompi,
+ * sin tocar en ningún momento la tabla de envíos (submissions) del
+ * webform ni el handler existente hacia Zapier.
+ */
+function wompi_donaciones_schema() {
+  $schema['wompi_donaciones_transaction'] = [
+    'description' => 'Registra cada intento de pago con Wompi asociado a un envío del webform Causas.',
+    'fields' => [
+      'id' => [
+        'description' => 'Identificador interno autoincremental.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'webform_submission_id' => [
+        'description' => 'ID del envío (webform_submission) del formulario Causas.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'reference' => [
+        'description' => 'Referencia única enviada a Wompi para este intento de pago.',
+        'type' => 'varchar_ascii',
+        'length' => 128,
+        'not null' => TRUE,
+      ],
+      'amount_in_cents' => [
+        'description' => 'Monto de la donación en centavos, tal como se envía a Wompi.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'currency' => [
+        'description' => 'Moneda de la transacción (ISO 4217).',
+        'type' => 'varchar_ascii',
+        'length' => 3,
+        'not null' => TRUE,
+        'default' => 'COP',
+      ],
+      'status' => [
+        'description' => 'Estado de la transacción: PENDIENTE, APROBADA, DECLINADA, ERROR.',
+        'type' => 'varchar_ascii',
+        'length' => 20,
+        'not null' => TRUE,
+        'default' => 'PENDIENTE',
+      ],
+      'wompi_transaction_id' => [
+        'description' => 'ID de la transacción asignado por Wompi (llega en el webhook).',
+        'type' => 'varchar_ascii',
+        'length' => 64,
+        'not null' => FALSE,
+      ],
+      'payment_method_type' => [
+        'description' => 'Método de pago usado en Wompi (CARD, PSE, NEQUI, etc.).',
+        'type' => 'varchar_ascii',
+        'length' => 40,
+        'not null' => FALSE,
+      ],
+      'customer_email' => [
+        'description' => 'Correo del donante, copiado del envío al momento de crear la referencia.',
+        'type' => 'varchar',
+        'length' => 254,
+        'not null' => FALSE,
+      ],
+      'raw_event' => [
+        'description' => 'Último payload de evento recibido desde el webhook de Wompi (JSON), para auditoría.',
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ],
+      'created' => [
+        'description' => 'Timestamp de creación del registro (al generar la referencia).',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'changed' => [
+        'description' => 'Timestamp de la última actualización de estado.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'reference' => ['reference'],
+    ],
+    'indexes' => [
+      'webform_submission_id' => ['webform_submission_id'],
+      'status' => ['status'],
+      'wompi_transaction_id' => ['wompi_transaction_id'],
+    ],
+  ];
+
+  return $schema;
+}

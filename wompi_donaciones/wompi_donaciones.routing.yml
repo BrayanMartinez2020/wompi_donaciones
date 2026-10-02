@@ -1,0 +1,30 @@
+wompi_donaciones.webhook:
+  path: '/wompi/webhook'
+  defaults:
+    _controller: '\Drupal\wompi_donaciones\Controller\WompiWebhookController::handle'
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
+    _maintenance_access: TRUE
+
+wompi_donaciones.estado:
+  path: '/wompi/estado/{wompi_transaction_id}'
+  defaults:
+    _controller: '\Drupal\wompi_donaciones\Controller\WompiEstadoController::handle'
+  methods: [GET]
+  requirements:
+    _access: 'TRUE'
+    wompi_transaction_id: '.+'
+  options:
+    no_cache: TRUE
+    _maintenance_access: TRUE
+
+wompi_donaciones.settings:
+  path: '/admin/config/services/wompi-donaciones'
+  defaults:
+    _form: '\Drupal\wompi_donaciones\Form\WompiSettingsForm'
+    _title: 'Configuración de Wompi - Donaciones'
+  requirements:
+    _permission: 'administer wompi donaciones'
